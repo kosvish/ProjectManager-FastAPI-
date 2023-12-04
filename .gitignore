@@ -3,3 +3,5 @@
 .idea/ProjectManager-FastAPI-.iml
 .idea/misc.xml
 .src/__pycache__/
+__pycache__/
+*.pyc
