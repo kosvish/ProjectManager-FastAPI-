@@ -6,7 +6,7 @@ class CreateUser(BaseModel):
     email: EmailStr
     password: str
 
-    class Config:
+    class ConfigDict:
         json_schema_extra = {
             "example": {
                 "username": "John Doe",
@@ -20,7 +20,7 @@ class LoginUser(BaseModel):
     email: EmailStr
     password: str
 
-    class Config:
+    class ConfigDict:
         json_schema_extra = {
             "example": {
                 "email": "johndoe@example.com",
@@ -38,11 +38,14 @@ class User(BaseModel):
     role_id: int
     role: str
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 
-
+class UserResponse(BaseModel):
+    username: str
+    email: str
+    hashed_password: str
 
 
 
