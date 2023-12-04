@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status, HTTPException
-from src.auth.schemas import CreateUser, LoginUser, User
+from src.auth.schemas import CreateUser, LoginUser, UserResponse
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.auth.models import User as UserModel
@@ -11,7 +11,7 @@ router = APIRouter(
 )
 
 
-@router.post("/signup", response_model=User)
+@router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def user_register(user: CreateUser, db: Session = Depends(get_db)):
     user_email = db.query(UserModel).filter(user.email == UserModel.email).first()
     if user_email is not None:
@@ -26,12 +26,15 @@ def user_register(user: CreateUser, db: Session = Depends(get_db)):
         role_id=1,
     )
     try:
-        with db.begin():
-
-            db.add(new_user)
-            db.commit()
-
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)  # Привязываем объект к сессии
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-    return new_user
+    return UserResponse(
+        username=new_user.username,
+        email=new_user.email,
+        hashed_password=new_user.hashed_password,
+    )
