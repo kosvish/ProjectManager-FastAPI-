@@ -1,17 +1,21 @@
-from fastapi.testclient import TestClient
 from pytest_mock import MockFixture
-from main import app
-from src.auth.router import user_register
+from tests.conftest import client
+from tests.conftest import SessionLocal_test
+from sqlalchemy import insert
+from src.auth.models import Role
 
-client = TestClient(app)
+
+def test_add_role():
+    with SessionLocal_test() as session:
+        stmt = insert(Role).values(id=1, role_name="simple_user", permissions=None)
+        session.execute(stmt)
+        session.commit()
 
 
 def test_registration(mocker: MockFixture):
     mocker.patch("src.auth.router.user_register")
 
-    # Тестирование успешной регистрации
-    response = client.post("/auth/signup",
-                           json={"username": "user1", "email": "user111@example.com", "password": "password"})
+    response = client.post("/auth/signup", json={"username": "user1", "email": "user111@example.com",
+                                                 "password": "password", "role_id": 1})
+
     assert response.status_code == 201
-
-
