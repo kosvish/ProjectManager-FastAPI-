@@ -45,7 +45,6 @@ class User(BaseModel):
 class UserResponse(BaseModel):
     username: str
     email: str
-    hashed_password: str
 
 
 class Token(BaseModel):
