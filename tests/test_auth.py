@@ -23,7 +23,7 @@ def test_registration(mocker: MockFixture):
 
 def test_login(mocker: MockFixture):
     mocker.patch("src.auth.router.login_for_access_token")
-    response = client.post("/auth/token", data={"username": "user1", "password": "password"})
+    response = client.post("/auth/login", data={"username": "user1", "password": "password"})
 
     assert response.status_code == 200
 
