@@ -1,15 +1,15 @@
-from fastapi import APIRouter, Depends, status, HTTPException
-from src.auth.schemas import CreateUser, LoginUser, UserResponse, UserInDB
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, status, HTTPException, Response, Cookie
+from src.auth.schemas import CreateUser, UserResponse, UserInDB
 from sqlalchemy.orm import Session
 from src.database import get_db
 from src.auth.models import User as UserModel
-from src.auth.utils import (get_password_hash, oauth2_scheme, authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTE,
-                            create_access_token)
-from src.auth.schemas import Token
-from typing import Annotated
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from datetime import timedelta
+from src.auth.utils import (get_password_hash, authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTE,
+                            create_access_token, verify_access_token)
 
+from fastapi.security import OAuth2PasswordRequestForm
+from datetime import timedelta
 
 router = APIRouter(
     prefix="/auth",
@@ -41,13 +41,13 @@ def user_register(user: CreateUser, db: Session = Depends(get_db)):
 
     return UserResponse(
         username=new_user.username,
-        email=new_user.email,
-        hashed_password=new_user.hashed_password,
+        email=new_user.email
     )
 
 
-@router.post("/token", response_model=Token)
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@router.post("/login", response_model=UserResponse)
+def login_for_access_token(response: Response, form_data: OAuth2PasswordRequestForm = Depends(),
+                           db: Session = Depends(get_db)):
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(
@@ -55,22 +55,20 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             detail="Incorrect username or password",
             headers={"WWW-Authenticated": "Bearer"}
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTE)
+    access_token_expires = timedelta(days=7)
     access_token = create_access_token(data={"sub": form_data.username}, expires_delta=access_token_expires)
-
-    return {"access_token": access_token, "token_type": "Bearer"}
-
-
-@router.post("/login", response_model=UserInDB)
-def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    user = authenticate_user(form_data.username, form_data.password, Depends(get_db))
-    if user is None or user is False:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticated": "Bearer"}
-        )
+    cookie_expire_data = datetime.utcnow() + timedelta(days=7)
+    cookie_expire_data_unix = int(cookie_expire_data.timestamp())
+    response.set_cookie(key="user_data", value=access_token,
+                        expires=cookie_expire_data_unix)
 
     return user
 
 
+@router.post("/logout", status_code=status.HTTP_200_OK)
+def logout(response: Response, user_data: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    if user_data is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You should login before logout")
+    decode_user_data = verify_access_token(user_data, db)
+    response.delete_cookie(key="user_data")
+    return {"message": "Success"}
