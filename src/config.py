@@ -18,3 +18,6 @@ DB_TEST_NAME = os.getenv("DB_TEST_NAME")
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORYTHM = os.getenv("ALGORYTHM")
+
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+SMTP_USER = os.getenv("SMTP_USER")
