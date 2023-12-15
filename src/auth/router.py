@@ -3,10 +3,11 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, status, HTTPException, Response, Cookie
 from src.auth.schemas import CreateUser, UserResponse, UserInDB
 from sqlalchemy.orm import Session
+from sqlalchemy import update, values
 from src.database import get_db
 from src.auth.models import User as UserModel
 from src.auth.utils import (get_password_hash, authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTE,
-                            create_access_token, verify_access_token)
+                            create_access_token, verify_access_token, decode_user_token, get_user)
 
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
@@ -72,3 +73,25 @@ def logout(response: Response, user_data: str | None = Cookie(default=None), db:
     decode_user_data = verify_access_token(user_data, db)
     response.delete_cookie(key="user_data")
     return {"message": "Success"}
+
+
+@router.post("/verification", status_code=status.HTTP_200_OK)
+def verification(response: Response, user_data: str | None = Cookie(default=None), db: Session = Depends(get_db)):
+    token_data = decode_user_token(user_data)
+    username = token_data["sub"]
+    current_user = get_user(username, db)
+    if current_user is None or current_user is False:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
+
+    current_user.authenticated = True
+
+    stmt = (
+        update(UserModel)
+        .values(authenticated=True)
+        .where(UserModel.username == current_user.username)
+    )
+    db.execute(stmt)
+
+    db.commit()
+
+    return {"message": "You have successfully authenticated"}
