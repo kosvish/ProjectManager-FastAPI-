@@ -27,3 +27,11 @@ def test_login(mocker: MockFixture):
 
     assert response.status_code == 200
 
+
+def test_logout(mocker: MockFixture):
+    mocker.patch("src.auth.router.logout")
+    response = client.post("/auth/logout")
+    assert response.status_code == 200
+
+
+
