@@ -75,23 +75,5 @@ def logout(response: Response, user_data: str | None = Cookie(default=None), db:
     return {"message": "Success"}
 
 
-@router.post("/verification", status_code=status.HTTP_200_OK)
-def verification(response: Response, user_data: str | None = Cookie(default=None), db: Session = Depends(get_db)):
-    token_data = decode_user_token(user_data)
-    username = token_data["sub"]
-    current_user = get_user(username, db)
-    if current_user is None or current_user is False:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
 
-    current_user.authenticated = True
 
-    stmt = (
-        update(UserModel)
-        .values(authenticated=True)
-        .where(UserModel.username == current_user.username)
-    )
-    db.execute(stmt)
-
-    db.commit()
-
-    return {"message": "You have successfully authenticated"}
